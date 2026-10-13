@@ -7,6 +7,7 @@ import Energy, { isFree } from './Energy.jsx';
 import { energyState } from './energyState.js';
 import Spark from './Spark.jsx';
 import Share from './Share.jsx';
+import Music from './Music.jsx';
 import Masonry from './Masonry.jsx';
 import { isDaylight } from '../../src/sun.js';
 
@@ -52,10 +53,32 @@ function Card({ sensor, rangeMs, now }) {
   );
 }
 
+/** Speaker-pictogram van de speler zelf (via de server), pas gebruikt als het echt laadt; anders het noten-icoon. */
+function useBluosIcon(url) {
+  const [src, setSrc] = useState(() => { try { return localStorage.getItem('bluosIcon'); } catch { return null; } });
+  const [ok, setOk] = useState(false);
+  useEffect(() => {
+    const u = url ?? src;
+    if (!u) { setOk(false); return undefined; }
+    let alive = true;
+    const img = new Image();
+    img.onload = () => {
+      if (!alive) return;
+      setOk(true);
+      setSrc(u);
+      try { localStorage.setItem('bluosIcon', u); } catch { /* geen opslag beschikbaar */ }
+    };
+    img.onerror = () => { if (alive) setOk(false); };
+    img.src = u;
+    return () => { alive = false; };
+  }, [url]); // eslint-disable-line react-hooks/exhaustive-deps
+  return ok ? src : null;
+}
+
 export default function App() {
-  const { sensors, lights, energy, sun, version, connected, reachable, loaded, target, targetMin, targetMax, setTarget, control } = useSensors();
+  const { sensors, lights, energy, sun, version, bluos, bluosCmd, connected, reachable, loaded, target, targetMin, targetMax, setTarget, control } = useSensors();
   const [tab, setTab] = useState(() => {
-    try { const t = localStorage.getItem('tab'); return ['lights', 'energy', 'share'].includes(t) ? t : 'climate'; } catch { return 'climate'; }
+    try { const t = localStorage.getItem('tab'); return ['lights', 'music', 'energy', 'share'].includes(t) ? t : 'climate'; } catch { return 'climate'; }
   });
   const pick = (t) => {
     setTab(t);
@@ -75,6 +98,8 @@ export default function App() {
   const avg = sensors.length ? sensors.reduce((a, s) => a + s.temperature, 0) / sensors.length : null;
 
   const daylight = isDaylight(sun, now);
+  const leader = bluos.zones[0]?.members.find((m) => m.isLeader) ?? bluos.zones[0]?.members[0];
+  const brandIcon = useBluosIcon(leader?.icon ? `/api/bluos/img?ip=${leader.ip}&path=${encodeURIComponent(leader.icon)}` : null);
   const eState = energyState(energy, daylight);
   const lightsOn = lights.filter((l) => l.on && l.kind !== 'socket' && l.kind !== 'fan').length;
 
@@ -82,6 +107,8 @@ export default function App() {
     <>
       {tab === 'lights' ? (
         <Lights lights={lights} loaded={loaded} reachable={reachable} control={control} status={status} />
+      ) : tab === 'music' ? (
+        <Music bluos={bluos} status={status} cmd={bluosCmd} />
       ) : tab === 'share' ? (
         <Share status={status} version={version} />
       ) : tab === 'energy' ? (
@@ -128,6 +155,10 @@ export default function App() {
         <button className={tab === 'climate' ? 'on' : ''} onClick={() => pick('climate')}><Icon name="thermo" /><span>Klimaat</span></button>
         <button className={tab === 'lights' ? 'on' : ''} onClick={() => pick('lights')}>
           <Icon name="bulb" /><span>Licht</span>{lightsOn > 0 && <b>{lightsOn}</b>}
+        </button>
+        <button className={tab === 'music' ? 'on' : ''} onClick={() => pick('music')}>
+          {brandIcon ? <i className="brand-icon" style={{ '--icon': `url("${brandIcon}")` }} aria-hidden="true" /> : <Icon name="music" />}
+          <span>Muziek</span>
         </button>
         <button className={`${tab === 'energy' ? 'on' : ''} ${daylight && isFree(energy) ? 'free' : ''}`} onClick={() => pick('energy')}>
           <Icon name={daylight && isFree(energy) ? 'sun' : 'bolt'} /><span>Energie</span>

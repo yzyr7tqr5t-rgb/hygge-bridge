@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 /** Laadt de toestand en houdt hem live bij via Server-Sent Events. */
 export function useSensors() {
-  const [data, setData] = useState({ connected: false, sensors: [], lights: [], energy: null, sun: null, version: null, target: null, targetMin: 10, targetMax: 28, loaded: false, reachable: true });
+  const [data, setData] = useState({ connected: false, sensors: [], lights: [], energy: null, sun: null, version: null, bluos: { zones: [], scanning: false, count: 0 }, target: null, targetMin: 10, targetMax: 28, loaded: false, reachable: true });
   const pending = useRef(null); // wachtend POST-timeout: server-updates negeren zolang de gebruiker draait
 
   const locked = useRef(new Set()); // lampen die de gebruiker nu versleept: server-echo's negeren
@@ -26,6 +26,25 @@ export function useSensors() {
       .catch(() => {})
       .finally(() => { if (lock) setTimeout(() => commands.forEach((c) => locked.current.delete(c.uuid)), 600); });
   }, []);
+
+  // BluOS: commando's met direct effect op het scherm; terwijl je een regelaar sleept negeren we server-updates.
+  const bluosLock = useRef(0);
+  const refreshBluos = useCallback(
+    () => fetch('/api/state', { cache: 'no-store' }).then((r) => r.json()).then((s) => setData((d) => ({ ...d, bluos: s.bluos }))).catch(() => {}),
+    [],
+  );
+  const bluosCmd = useCallback((action, params = {}, { lock = false, lockMs = 900 } = {}) => {
+    setData((d) => ({ ...d, bluos: optimisticBluos(d.bluos, action, params) }));
+    if (lock) bluosLock.current = Date.now() + lockMs;
+    return fetch('/api/bluos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, ...params }) })
+      .then((r) => r.json())
+      .catch(() => ({ ok: false, error: 'geen verbinding met de server' }))
+      .then((res) => {
+        if (!res.ok) refreshBluos(); // niet gelukt: terug naar wat de speler echt doet
+        if (lock) setTimeout(refreshBluos, lockMs + 100);
+        return res;
+      });
+  }, [refreshBluos]);
 
   const setTarget = useCallback((target) => {
     setData((d) => ({ ...d, target }));
@@ -68,6 +87,10 @@ export function useSensors() {
           return { ...d, reachable: true, energy: { ...snap, history: next } };
         });
       });
+      es.addEventListener('bluos', (e) => {
+        if (bluosLock.current > Date.now()) return;
+        setData((d) => ({ ...d, reachable: true, bluos: JSON.parse(e.data) }));
+      });
       es.addEventListener('lights', (e) => setData((d) => ({ ...d, reachable: true, lights: JSON.parse(e.data) })));
       es.addEventListener('light', (e) => {
         const l = JSON.parse(e.data);
@@ -98,5 +121,22 @@ export function useSensors() {
     };
   }, []);
 
-  return { ...data, setTarget, control };
+  return { ...data, setTarget, control, bluosCmd };
+}
+
+/** Past een BluOS-commando meteen toe op de weergave (de speler bevestigt het daarna). */
+function optimisticBluos(bluos, action, params) {
+  const zones = bluos.zones.map((z) => {
+    if (!z.members.some((m) => m.ip === params.ip)) return z;
+    switch (action) {
+      case 'play': return { ...z, state: 'play', playing: true };
+      case 'pause': case 'stop': return { ...z, state: 'pause', playing: false };
+      case 'mute': return { ...z, mute: params.mute };
+      case 'groupVolume': return { ...z, groupVolume: params.level };
+      case 'preset': return { ...z, presets: z.presets.map((p) => ({ ...p, active: p.id === params.id })) };
+      case 'volume': return { ...z, groupVolume: z.grouped ? z.groupVolume : params.level, members: z.members.map((m) => (m.ip === params.ip ? { ...m, volume: params.level } : m)) };
+      default: return z;
+    }
+  });
+  return { ...bluos, zones };
 }

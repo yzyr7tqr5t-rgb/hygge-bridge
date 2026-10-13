@@ -35,6 +35,13 @@ Controleer de build met `gh run list --repo yzyr7tqr5t-rgb/hygge-bridge --limit 
 Een push naar GitHub en het aanmaken van repositories kan door de permissie-instellingen geblokkeerd worden: zeg dat dan
 tegen de gebruiker in plaats van het te omzeilen.
 
+## BluOS-spelers (tab Muziek)
+Plan en API-notities: `docs/bluos-plan.md`. Code: `src/bluos.js` (puur), `src/bluos-manager.js` (scan, polling, commando's), `web/src/Music.jsx`.
+- Spelers worden gevonden met een scan van poort 11000 op de /24-netwerken (lokaal + dat van `NIKO_HOST`); gevonden IP's staan in `state.json`.
+- Transportopdrachten (play/pauze/skip/preset) gaan altijd naar de **leider** van de groep; volume naar de speler zelf; groepsvolume schaalt alle leden.
+- Hoes bij radio: `src/cover.js` zoekt bij "ARTIEST - Titel" een hoes via iTunes, daarna Deezer (gratis, zonder sleutel), met strenge controle op artiest en titel en met onthouden resultaten. Daarbij gaan **titel en artiest naar Apple/Deezer**; uitzetten met `BLUOS_COVERS=false`. Het zenderlogo blijft de terugval.
+- Test tegen echte spelers uitsluitend met **no-op** commando's (zelfde volume), nooit play/pauze/groeperen: dat verstoort muziek in huis.
+
 ## Regels en valkuilen
 - **Geheimen:** `.env` (met `NIKO_TOKEN`) en `state.json` staan in `.gitignore` en horen nooit in een commit, log of chatbericht.
   Controleer vóór een commit dat het token nergens in staat. De repo is openbaar.

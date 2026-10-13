@@ -2,11 +2,13 @@
 // (web/dist) plus een kleine API. Het Niko-token blijft op de server.
 //   GET /api/state   -> huidige toestand + geschiedenis
 //   GET /api/stream  -> Server-Sent Events met live updates
+//   POST /api/bluos  -> { action, ip, ... } bedient BluOS-spelers; GET /api/bluos/img geeft hoezen door
 //   GET /api/qr      -> SVG met een QR-code van het adres van de app
 //   POST /api/devices -> [{ uuid, on?, brightness? }] bedient lichten, dimmers, stopcontacten
 //   POST /api/target -> { target: °C } zet de doeltemperatuur (bewaard in state.json)
 
 import http from 'node:http';
+import os from 'node:os';
 import QRCode from 'qrcode';
 import { readFile, writeFile } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
@@ -18,6 +20,8 @@ import { toModel, applyProperties, controlProperties } from './home.js';
 import { propertiesToObject } from './niko.js';
 import { EnergyTracker } from './energy.js';
 import { sunTimes } from './sun.js';
+import { BluosManager } from './bluos-manager.js';
+import { lanPrefixes } from './bluos.js';
 
 const PORT = Number(process.env.PORT) || 3000;
 const { version: VERSION } = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
@@ -44,7 +48,7 @@ const energy = new EnergyTracker(saved.energy);
 let energyUuid = null;
 let lastSave = 0;
 
-const saveState = () => writeFile(STATE_FILE, JSON.stringify({ target, energy }), 'utf8').catch((e) => console.error('FOUT:', e.message));
+const saveState = () => writeFile(STATE_FILE, JSON.stringify({ target, energy, bluos: [...(bluos?.players.keys() ?? saved.bluos ?? [])] }), 'utf8').catch((e) => console.error('FOUT:', e.message));
 
 async function setTarget(value) {
   const v = Math.round(Number(value) * 2) / 2;
@@ -72,13 +76,24 @@ function record(uuid, name, temperature) {
 }
 
 function snapshot() {
-  return { version: VERSION, connected, sun: sunTimes(Date.now(), config.location.lat, config.location.lon), energy: { ...energy.snapshot(), history: energy.history }, lights: [...lights.values()], target, targetMin: TARGET_MIN, targetMax: TARGET_MAX, sensors: [...sensors.values()], now: Date.now() };
+  return { version: VERSION, bluos: bluos.snapshot(), connected, sun: sunTimes(Date.now(), config.location.lat, config.location.lon), energy: { ...energy.snapshot(), history: energy.history }, lights: [...lights.values()], target, targetMin: TARGET_MIN, targetMax: TARGET_MAX, sensors: [...sensors.values()], now: Date.now() };
 }
 
 function broadcast(event, data) {
   const msg = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
   for (const res of streams) res.write(msg);
 }
+
+// BluOS-spelers: bewaarde en handmatige IP's plus een scan van de lokale netwerken en het netwerk van Niko.
+const list = (v) => String(v ?? '').split(',').map((x) => x.trim()).filter(Boolean);
+const bluosHosts = [...new Set([...(saved.bluos ?? []), ...list(process.env.BLUOS_HOSTS)])];
+const bluos = new BluosManager({
+  covers: process.env.BLUOS_COVERS !== 'false', // 'false' = geen hoezen zoeken (titels gaan dan nergens heen)
+  hosts: bluosHosts,
+  prefixes: lanPrefixes({ interfaces: os.networkInterfaces(), extraHosts: [config.niko.host, ...bluosHosts], extraPrefixes: list(process.env.BLUOS_SUBNETS) }),
+});
+bluos.on('update', (snap) => broadcast('bluos', snap));
+bluos.on('hosts', () => saveState());
 
 // Eén verbinding met de controller voor alles: temperaturen, lichten en energie.
 // (De controller weigert soms extra verbindingen, dus we houden het bij één.)
@@ -131,6 +146,7 @@ home.on('update', (list) => {
   }
 });
 const clients = [home.connect()];
+bluos.start().catch((err) => console.error('FOUT: BluOS starten mislukt:', err.message));
 
 async function serveStatic(req, res) {
   const path = normalize(decodeURIComponent(new URL(req.url, 'http://x').pathname)).replace(/^(\.\.[/\\])+/, '');
@@ -171,10 +187,33 @@ const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive' });
     res.write(`event: status\ndata: ${JSON.stringify({ connected })}\n\n`);
     res.write(`event: target\ndata: ${JSON.stringify({ target })}\n\n`);
+    res.write(`event: bluos\ndata: ${JSON.stringify(bluos.snapshot())}\n\n`);
     res.write(`event: energy\ndata: ${JSON.stringify(energy.snapshot())}\n\n`);
     res.write(`event: lights\ndata: ${JSON.stringify([...lights.values()])}\n\n`);
     streams.add(res);
     req.on('close', () => streams.delete(res));
+  } else if (pathname === '/api/bluos' && req.method === 'POST') {
+    // Body: { action, ip, ...parameters } voor een bekende BluOS-speler
+    readJson(req, async (body) => {
+      try {
+        await bluos.command(body?.action, body ?? {});
+        json(res, 200, { ok: true });
+      } catch (err) {
+        json(res, 400, { ok: false, error: err.message });
+      }
+    });
+  } else if (pathname === '/api/bluos/img') {
+    // Hoes of icoon van een speler doorgeven (alleen van spelers die we zelf gevonden hebben)
+    const q = new URL(req.url, 'http://x').searchParams;
+    const path = q.get('path') ?? '';
+    if (!bluos.players.has(q.get('ip')) || !path.startsWith('/') || path.startsWith('//') || path.includes('..')) return json(res, 400, { ok: false });
+    fetch(`http://${q.get('ip')}:11000${path}`, { signal: AbortSignal.timeout(5000) })
+      .then(async (r) => {
+        const type = r.headers.get('content-type') ?? '';
+        if (!r.ok || !type.startsWith('image/')) return json(res, 404, { ok: false });
+        res.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'public, max-age=3600' }).end(Buffer.from(await r.arrayBuffer()));
+      })
+      .catch(() => json(res, 502, { ok: false }));
   } else if (pathname === '/api/qr') {
     // QR-code (SVG) van het adres waarmee deze pagina geopend is, om de app op een ander toestel te openen.
     QRCode.toString(`http://${req.headers.host}`, { type: 'svg', margin: 1, color: { dark: '#14161a', light: '#ffffff' } })
@@ -208,6 +247,7 @@ server.listen(PORT, '0.0.0.0', () => console.log(`Hygge-app v${VERSION} op http:
 
 for (const sig of ['SIGINT', 'SIGTERM']) {
   process.on(sig, async () => {
+    bluos.stop();
     await saveState();
     await Promise.all(clients.map((c) => c.close()));
     process.exit(0);

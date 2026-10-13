@@ -19,6 +19,7 @@
     "version": "node scripts/sync-version.mjs && git add hygge_bridge/config.yaml"
   },
   "dependencies": {
+    "fast-xml-parser": "^4.5.0",
     "mqtt": "^5.16.0",
     "qrcode": "^1.5.4",
     "react": "^18.3.1",
