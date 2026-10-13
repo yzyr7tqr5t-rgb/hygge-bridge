@@ -4,6 +4,7 @@ import TargetPanel from './TargetPanel.jsx';
 import Lights from './Lights.jsx';
 import { Icon } from './Icons.jsx';
 import Energy, { isFree } from './Energy.jsx';
+import { energyState } from './energyState.js';
 import Spark from './Spark.jsx';
 import Share from './Share.jsx';
 import { isDaylight } from '../../src/sun.js';
@@ -73,6 +74,7 @@ export default function App() {
   const avg = sensors.length ? sensors.reduce((a, s) => a + s.temperature, 0) / sensors.length : null;
 
   const daylight = isDaylight(sun, now);
+  const eState = energyState(energy, daylight);
   const lightsOn = lights.filter((l) => l.on && l.kind !== 'socket' && l.kind !== 'fan').length;
 
   return (
@@ -116,6 +118,7 @@ export default function App() {
         </button>
         <button className={`${tab === 'energy' ? 'on' : ''} ${daylight && isFree(energy) ? 'free' : ''}`} onClick={() => pick('energy')}>
           <Icon name={daylight && isFree(energy) ? 'sun' : 'bolt'} /><span>Energie</span>
+          {eState && <i className={`edot ${eState.key} ${eState.critical ? 'critical' : ''}`} title={eState.label} />}
         </button>
         <button className={tab === 'share' ? 'on' : ''} onClick={() => pick('share')}><Icon name="qr" /><span>Delen</span></button>
       </nav>

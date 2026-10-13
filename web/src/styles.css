@@ -212,3 +212,10 @@ main { padding-bottom: calc(env(safe-area-inset-bottom) + 100px); }
 .state .seg.active { color: var(--text); }
 .state .seg.active i { background: var(--c); transform: scaleY(1.5); box-shadow: 0 0 10px color-mix(in srgb, var(--c) 55%, transparent); }
 .state-text { margin: 0; font-size: 14.5px; line-height: 1.35; color: var(--muted); }
+
+/* Toestand-bolletje op het Energie-tabblad */
+.tabbar button .edot { position: absolute; top: 7px; left: 27px; width: 11px; height: 11px; border-radius: 50%; background: var(--dc); border: 2px solid var(--card); box-sizing: content-box; }
+.tabbar button .edot.solar { --dc: var(--sun); } .tabbar button .edot.low { --dc: var(--e-low); }
+.tabbar button .edot.mid { --dc: var(--e-mid); } .tabbar button .edot.high { --dc: var(--e-high); }
+.tabbar button .edot.critical { animation: glow-pulse 1s ease-in-out infinite; }
+.tabbar button.on .edot { border-color: var(--text); }
