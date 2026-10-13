@@ -12,7 +12,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from './config.js';
-import { NikoClient } from './niko.js';
+import { NikoClient, findSensor, readTemperature } from './niko.js';
 import { listSensors } from './sensors.js';
 import { toModel, applyProperties, controlProperties } from './home.js';
 import { propertiesToObject } from './niko.js';
@@ -80,18 +80,17 @@ function broadcast(event, data) {
   for (const res of streams) res.write(msg);
 }
 
-const clients = listSensors(config.niko).map((sensor) => {
-  const niko = new NikoClient({ ...config.niko, ...sensor });
-  niko.on('connect', () => { connected = true; broadcast('status', { connected }); console.log('Verbonden met Niko'); });
-  niko.on('offline', () => { connected = false; broadcast('status', { connected }); });
-  niko.on('error', (err) => console.error('FOUT:', err.message));
-  niko.on('temperature', (t, device) => record(device.Uuid, device.Name, t));
-  return niko.connect();
-});
+// Eén verbinding met de controller voor alles: temperaturen, lichten en energie.
+// (De controller weigert soms extra verbindingen, dus we houden het bij één.)
+const sensorSpecs = listSensors(config.niko);
+if (sensorSpecs.length === 0) throw new Error('Geef NIKO_SENSOR_UUID of NIKO_SENSOR_NAME op');
+const sensorNames = new Map(); // uuid van een gekozen sensor -> naam
 
-// Eén extra verbinding voor alle schakelbare toestellen (los van de temperatuursensoren).
 const home = new NikoClient({ ...config.niko, sensorName: '', sensorUuid: '' });
+home.on('connect', () => { connected = true; broadcast('status', { connected }); console.log('Verbonden met Niko'); });
+home.on('offline', () => { connected = false; broadcast('status', { connected }); });
 home.on('error', (err) => console.error('FOUT:', err.message));
+
 function applyEnergy(props) {
   const now = Date.now();
   if (!energy.apply(props, now)) return;
@@ -99,9 +98,21 @@ function applyEnergy(props) {
   if (now - lastSave > 60_000) { lastSave = now; saveState(); }
 }
 
+function applySensor(raw) {
+  const temperature = readTemperature(raw);
+  if (temperature !== null) record(raw.Uuid, sensorNames.get(raw.Uuid), temperature);
+}
+
 home.on('devices', (list) => {
+  sensorNames.clear();
+  for (const spec of sensorSpecs) {
+    const sensor = findSensor(list, spec);
+    if (sensor) sensorNames.set(sensor.Uuid, sensor.Name ?? sensor.Uuid);
+    else console.error(`FOUT: sensor "${spec.sensorUuid || spec.sensorName}" niet gevonden. Voer "npm run devices" uit om de namen te zien.`);
+  }
   lights.clear();
   for (const raw of list) {
+    if (sensorNames.has(raw.Uuid)) applySensor(raw);
     if (raw.Type === 'energyhome') { energyUuid = raw.Uuid; applyEnergy(propertiesToObject(raw.Properties)); }
     const model = toModel(raw);
     if (model) lights.set(model.uuid, model);
@@ -110,6 +121,7 @@ home.on('devices', (list) => {
 });
 home.on('update', (list) => {
   for (const raw of list) {
+    if (sensorNames.has(raw.Uuid)) applySensor(raw);
     if (raw.Uuid === energyUuid) applyEnergy(propertiesToObject(raw.Properties));
     const current = lights.get(raw.Uuid);
     if (!current) continue;
@@ -118,8 +130,7 @@ home.on('update', (list) => {
     broadcast('light', next);
   }
 });
-clients.push(home.connect());
-if (clients.length === 1) throw new Error('Geef NIKO_SENSOR_UUID of NIKO_SENSOR_NAME op');
+const clients = [home.connect()];
 
 async function serveStatic(req, res) {
   const path = normalize(decodeURIComponent(new URL(req.url, 'http://x').pathname)).replace(/^(\.\.[/\\])+/, '');

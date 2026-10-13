@@ -1,21 +1,21 @@
-# Stap 1: de React-app bouwen
-FROM node:22-alpine AS web
+# Alles wat bouwt draait op de snelle bouwserver zelf ($BUILDPLATFORM); de afhankelijkheden zijn
+# gewone JavaScript, dus er hoeft niets op de doelprocessor (Pi) nagebootst te worden.
+FROM --platform=$BUILDPLATFORM node:22-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY src ./src
 COPY web ./web
-RUN npx vite build web
+RUN npx vite build web && npm prune --omit=dev
 
-# Stap 2: de server met de gebouwde app
 FROM node:22-alpine
 LABEL org.opencontainers.image.source="https://github.com/yzyr7tqr5t-rgb/hygge-bridge"
 WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
+COPY package.json ./
+COPY --from=build /app/node_modules ./node_modules
 COPY src ./src
 COPY certs ./certs
-COPY --from=web /app/web/dist ./web/dist
+COPY --from=build /app/web/dist ./web/dist
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 ENV NODE_ENV=production PORT=3000 STATE_FILE=/data/state.json
 VOLUME /data
