@@ -2,8 +2,9 @@ import { useMemo } from 'react';
 import Spark from './Spark.jsx';
 import { Icon } from './Icons.jsx';
 
-export const FREE_FROM_W = 150; // vanaf zoveel teruglevering spreken we van gratis zonne-energie
-export const isFree = (energy) => (energy?.toGrid ?? 0) >= FREE_FROM_W;
+import { FREE_FROM_W, isFree, energyState } from './energyState.js';
+
+export { isFree };
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const nl = (v, d) => v.toLocaleString('nl-BE', { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -43,6 +44,32 @@ function tip(w) {
   if (w >= 2000) return 'Start nu de wasmachine, vaatwasser of droogkast, of verwarm met de airco.';
   if (w >= 800) return 'Goed moment voor de stofzuiger, strijkijzer of om iets op te laden.';
   return 'Laad je telefoon, laptop of fiets op.';
+}
+
+const SEGMENTS = [
+  ['solar', 'Overschot'],
+  ['low', 'Laag'],
+  ['mid', 'Normaal'],
+  ['high', 'Hoog'],
+];
+
+/** Toestand in één oogopslag: een balk met de huidige stand en een zin uitleg. */
+function StateBar({ state, daylight }) {
+  const segments = SEGMENTS.filter(([key]) => key !== 'solar' || daylight);
+  return (
+    <section className={`state ${state.key} ${state.critical ? 'critical' : ''}`} aria-live="polite">
+      <div className="state-head">
+        <span className="state-dot" />
+        <span className="state-label">{state.label}</span>
+      </div>
+      <div className="state-bar" role="img" aria-label={`Toestand: ${state.label}`}>
+        {segments.map(([key, name]) => (
+          <span key={key} className={`seg ${key} ${key === state.key ? 'active' : ''}`}><i />{name}</span>
+        ))}
+      </div>
+      <p className="state-text">{state.text}</p>
+    </section>
+  );
 }
 
 /** Statusbanner: is er nu gratis zonne-energie die anders naar het net gaat? */
@@ -106,6 +133,7 @@ export default function Energy({ energy, status, now, daylight = true }) {
         <p className="hint">Wachten op de energiemeter van Niko…</p>
       ) : (
         <>
+          <StateBar state={energyState(energy, daylight)} daylight={daylight} />
           {daylight && <Status energy={energy} net={net} />}
 
           <section className="card gauge-card">
