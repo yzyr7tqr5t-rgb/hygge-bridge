@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sunTimes, isDaylight } from '../src/sun.js';
+import { sunTimes, isDaylight, sunForDay } from '../src/sun.js';
 
 const hours = (ms) => new Date(ms).getUTCHours() + new Date(ms).getUTCMinutes() / 60;
 
@@ -26,4 +26,11 @@ test('isDaylight, ook als de tijden van gisteren zijn', () => {
   assert.equal(isDaylight(t, Date.UTC(2026, 5, 23, 12)), true); // twee dagen later
   assert.equal(isDaylight(t, Date.UTC(2026, 5, 23, 2)), false);
   assert.equal(isDaylight(null, Date.now()), true);
+});
+
+test('sunForDay schuift de tijden naar de dag van nu', () => {
+  const t = sunTimes(Date.UTC(2026, 5, 21, 12), 50.85, 4.35);
+  const two = sunForDay(t, Date.UTC(2026, 5, 23, 12));
+  assert.equal(two.rise, t.rise + 2 * 86_400_000);
+  assert.equal(sunForDay(null, Date.now()), null);
 });

@@ -29,9 +29,15 @@ export function sunTimes(ms, lat, lon) {
   return { rise: fromJulian(noon - (setJ - noon)), set: fromJulian(setJ) };
 }
 
+/** Schuift zonsopgang/-ondergang van een eerdere dag op naar de dag van `now` (het verschil is een paar minuten per dag). */
+export function sunForDay(sun, now) {
+  if (!sun) return null;
+  const k = Math.round((now - (sun.rise + sun.set) / 2) / DAY_MS);
+  return { rise: sun.rise + k * DAY_MS, set: sun.set + k * DAY_MS };
+}
+
 /** Is het op dit moment dag? `sun` komt uit sunTimes(); zonder gegevens gaan we uit van dag. */
 export function isDaylight(sun, now) {
-  if (!sun) return true;
-  const k = Math.round((now - (sun.rise + sun.set) / 2) / DAY_MS); // oude dag? schuif de tijden op
-  return now >= sun.rise + k * DAY_MS && now < sun.set + k * DAY_MS;
+  const today = sunForDay(sun, now);
+  return !today || (now >= today.rise && now < today.set);
 }

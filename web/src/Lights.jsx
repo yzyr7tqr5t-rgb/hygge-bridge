@@ -1,5 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from './Icons.jsx';
+import Masonry from './Masonry.jsx';
 
 const ROOM_ORDER = ['Living', 'Keuken', 'Buro', 'Wc', 'Berging', 'Sas', 'Thuis'];
 const isLight = (l) => l.kind === 'light' || l.kind === 'dimmer';
@@ -185,7 +186,13 @@ export default function Lights({ lights, loaded, reachable, control, status }) {
 
       {!loaded && <p className="hint">Laden…</p>}
       {loaded && reachable && lights.length === 0 && <p className="hint">Wachten op de toestellen van Niko…</p>}
-      {rooms.map(([name, devices]) => <Room key={name} name={name} devices={devices} control={control} collapsed={collapsed.has(name)} onToggle={() => toggleRoom(name)} />)}
+      <Masonry
+        items={rooms.map(([name, devices]) => ({
+          key: name,
+          weight: 1 + (collapsed.has(name) ? 0 : Math.ceil(devices.length / 2) * 1.1),
+          node: <Room name={name} devices={devices} control={control} collapsed={collapsed.has(name)} onToggle={() => toggleRoom(name)} />,
+        }))}
+      />
     </main>
   );
 }

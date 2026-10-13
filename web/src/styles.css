@@ -219,3 +219,69 @@ main { padding-bottom: calc(env(safe-area-inset-bottom) + 100px); }
 .tabbar button .edot.mid { --dc: var(--e-mid); } .tabbar button .edot.high { --dc: var(--e-high); }
 .tabbar button .edot.critical { animation: glow-pulse 1s ease-in-out infinite; }
 .tabbar button.on .edot { border-color: var(--text); }
+
+/* ---------- Tablet en groter ---------- */
+/* Vanaf een tablet in staand formaat vloeit de inhoud over twee kolommen. */
+@media (min-width: 700px) {
+  main { max-width: 920px; padding-top: calc(env(safe-area-inset-top) + 32px); }
+  main.share { max-width: 600px; }
+  h1 { font-size: 38px; }
+  .tabbar button { padding: 13px 22px; font-size: 15px; }
+  .temp { font-size: 84px; }
+  .tiles { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+}
+
+/* Tablet in liggend formaat en desktop: zijbalk links, drie kolommen bij veel ruimte. */
+@media (min-width: 1000px) {
+  body { padding-left: 112px; }
+  main { max-width: 1240px; }
+  .tabbar {
+    left: 16px; top: 50%; bottom: auto; transform: translateY(-50%);
+    flex-direction: column; gap: 6px; padding: 8px; border-radius: 28px; width: 88px;
+  }
+  .tabbar button, .tabbar button:not(.on) { flex-direction: column; justify-content: center; gap: 4px; padding: 12px 4px; border-radius: 20px; font-size: 12px; }
+  .tabbar button span, .tabbar button:not(.on) span { display: inline; }
+  .tabbar b { position: absolute; top: 2px; right: 8px; }
+  .tabbar button .edot { top: 8px; left: auto; right: 22px; }
+}
+
+/* Zonne-energie */
+.solar-card { padding: 18px; background: linear-gradient(170deg, color-mix(in srgb, var(--sun) 9%, var(--card)), var(--card) 60%); border-color: color-mix(in srgb, var(--sun) 24%, var(--line)); transition: border-color 0.4s, box-shadow 0.4s; }
+.solar-card.on { border-color: color-mix(in srgb, var(--sun) 55%, var(--line)); box-shadow: 0 8px 28px color-mix(in srgb, var(--sun) 20%, transparent); }
+.solar-head { display: flex; align-items: center; gap: 12px; }
+.solar-head h2 { margin: 0; font-size: 19px; text-transform: none; letter-spacing: -0.01em; }
+.solar-icon { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; background: color-mix(in srgb, var(--sun) 28%, var(--card)); color: #b45309; }
+@media (prefers-color-scheme: dark) { .solar-icon { color: var(--sun); } }
+.solar-state { font-size: 14px; color: var(--muted); }
+.solar.on .solar-state { color: var(--text); font-weight: 600; }
+.day-arc { margin: 16px 0 4px; }
+.day-arc svg { width: 100%; display: block; }
+.arc-track, .arc-done { fill: none; stroke-width: 8; stroke-linecap: round; }
+.arc-track { stroke: var(--line); stroke-dasharray: 2 9; }
+.arc-done { stroke: var(--sun); }
+.horizon { stroke: var(--line); stroke-width: 2; }
+.sun-glow { fill: var(--sun); opacity: 0.28; }
+.sun-core { fill: var(--sun); stroke: #fff; stroke-width: 2.5; }
+.arc-times { display: flex; justify-content: space-between; align-items: flex-start; margin-top: 2px; font-size: 12.5px; color: var(--muted); }
+.arc-times span { display: flex; flex-direction: column; gap: 1px; }
+.arc-times b { font-size: 16px; color: var(--text); font-variant-numeric: tabular-nums; }
+.arc-times .arc-left { align-self: center; color: var(--text); font-weight: 600; font-size: 13.5px; text-align: center; }
+.solar-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
+.solar-stats div { display: flex; flex-direction: column; gap: 3px; padding: 11px 10px; border-radius: 16px; background: color-mix(in srgb, var(--sun) 10%, var(--bg)); }
+.solar-stats span { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+.solar-stats b { font-size: 21px; white-space: nowrap; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.solar-stats small { font-size: 12px; font-weight: 600; color: var(--muted); margin-left: 3px; letter-spacing: 0; }
+.balance { margin-top: 16px; }
+.balance-labels { display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+.balance-bar { display: flex; height: 12px; border-radius: 6px; overflow: hidden; background: var(--line); }
+.balance-bar i { display: block; height: 100%; transition: width 0.5s ease; }
+.bal-draw { background: var(--e-mid); } .bal-sent { background: var(--sun); }
+.solar-chart { margin-top: 12px; }
+.solar-chart-title { font-size: 13px; font-weight: 600; color: var(--muted); }
+.solar-chart .spark { margin-top: 4px; }
+
+/* Kolommen: vaste verdeling, bovenkanten lopen gelijk */
+.cols { display: grid; grid-template-columns: repeat(var(--n, 1), minmax(0, 1fr)); gap: 0 20px; align-items: start; }
+.col { display: flex; flex-direction: column; min-width: 0; }
+.col > .mi { min-width: 0; }
+.col > .mi > :first-child { margin-top: 0; }

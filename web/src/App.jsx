@@ -7,6 +7,7 @@ import Energy, { isFree } from './Energy.jsx';
 import { energyState } from './energyState.js';
 import Spark from './Spark.jsx';
 import Share from './Share.jsx';
+import Masonry from './Masonry.jsx';
 import { isDaylight } from '../../src/sun.js';
 
 const RANGES = [
@@ -84,7 +85,7 @@ export default function App() {
       ) : tab === 'share' ? (
         <Share status={status} version={version} />
       ) : tab === 'energy' ? (
-        <Energy energy={energy} status={status} now={now} daylight={daylight} />
+        <Energy energy={energy} status={status} now={now} daylight={daylight} sun={sun} />
       ) : (
       <main>
         <header>
@@ -95,19 +96,31 @@ export default function App() {
           <span className={`pill ${status[0]}`}><i />{status[1]}</span>
         </header>
 
-        {target !== null && (
-          <TargetPanel target={target} min={targetMin} max={targetMax} current={avg} onChange={setTarget} />
-        )}
-
-        <div className="segmented" role="tablist" aria-label="Periode">
-          {RANGES.map((r, i) => (
-            <button key={r.label} role="tab" aria-selected={range === i} className={range === i ? 'on' : ''} onClick={() => setRange(i)}>{r.label}</button>
-          ))}
-        </div>
-
-        {!loaded && <p className="hint">Laden…</p>}
-        {loaded && sensors.length === 0 && <p className="hint">Wachten op de eerste meting van Niko…</p>}
-        {sensors.map((s) => <Card key={s.uuid} sensor={s} rangeMs={RANGES[range].ms} now={now} />)}
+        <Masonry
+          items={[
+            target !== null && {
+              key: 'target',
+              weight: 4.4,
+              node: <TargetPanel target={target} min={targetMin} max={targetMax} current={avg} onChange={setTarget} />,
+            },
+            {
+              key: 'sensors',
+              weight: 0.5 + 2.8 * Math.max(1, sensors.length),
+              node: (
+                <>
+                  <div className="segmented" role="tablist" aria-label="Periode">
+                    {RANGES.map((r, i) => (
+                      <button key={r.label} role="tab" aria-selected={range === i} className={range === i ? 'on' : ''} onClick={() => setRange(i)}>{r.label}</button>
+                    ))}
+                  </div>
+                  {!loaded && <p className="hint">Laden…</p>}
+                  {loaded && sensors.length === 0 && <p className="hint">Wachten op de eerste meting van Niko…</p>}
+                  {sensors.map((s) => <Card key={s.uuid} sensor={s} rangeMs={RANGES[range].ms} now={now} />)}
+                </>
+              ),
+            },
+          ]}
+        />
       </main>
       )}
 

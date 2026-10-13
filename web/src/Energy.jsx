@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import Spark from './Spark.jsx';
 import { Icon } from './Icons.jsx';
+import Solar from './Solar.jsx';
+import Masonry from './Masonry.jsx';
 
 import { FREE_FROM_W, isFree, energyState } from './energyState.js';
 
@@ -110,7 +112,7 @@ function Status({ energy, net }) {
   );
 }
 
-export default function Energy({ energy, status, now, daylight = true }) {
+export default function Energy({ energy, status, now, daylight = true, sun = null }) {
   const stats = useMemo(() => {
     const h = (energy?.history ?? []).filter(([ts]) => now - ts <= 3600_000);
     const enough = h.length > 1 && h.at(-1)[0] - h[0][0] >= 10 * 60_000; // pas tonen met minstens 10 min data
@@ -132,49 +134,54 @@ export default function Energy({ energy, status, now, daylight = true }) {
       {net === null ? (
         <p className="hint">Wachten op de energiemeter van Niko…</p>
       ) : (
-        <>
-          <StateBar state={energyState(energy, daylight)} daylight={daylight} />
-          {daylight && <Status energy={energy} net={net} />}
-
-          <section className="card gauge-card">
-            <Gauge net={net} peak={energy.monthlyPeak} />
-            <div className="g-foot">
-                            {stats.avgHour !== null && <span className="chip">gem. laatste uur {power(Math.abs(stats.avgHour)).v} {power(Math.abs(stats.avgHour)).u}{stats.avgHour < 0 ? ' terug' : ''}</span>}
-            </div>
-          </section>
-
-          <div className="stat-grid">
-            <section className="stat">
-              <span className="stat-label">Vandaag</span>
-              <span className="stat-val">{kwh(energy.kwhFrom)}</span>
-              <span className="stat-note">afname, geschat</span>
-            </section>
-            <section className="stat">
-              <span className="stat-label">Maandpiek</span>
-              <span className="stat-val">{energy.monthlyPeak !== null ? `${nl(energy.monthlyPeak / 1000, 2)} kW` : '—'}</span>
-              <span className="stat-note">hoogste afname</span>
-            </section>
-            {daylight && (energy.kwhTo > 0.005 || energy.peakTo > 0) && (
-              <section className="stat solar">
-                <span className="stat-label"><Icon name="sun" size={14} /> Zon vandaag</span>
-                <span className="stat-val">{kwh(energy.kwhTo)} teruggeleverd</span>
-                <span className="stat-note">piek {power(energy.peakTo).v} {power(energy.peakTo).u} over</span>
-              </section>
-            )}
-          </div>
-
-          <section className="card chart-card">
-            <div className="card-head"><h2>Laatste 24 uur</h2><span className="when">nettovermogen</span></div>
-            <Spark
-              history={energy.history}
-              rangeMs={24 * 3600_000}
-              now={now}
-              color="var(--energy)"
-              format={(v) => `${power(v).v} ${power(v).u}`}
-            />
-          </section>
-          <p className="footnote">Het dagtotaal telt enkel zolang deze app-server draait en is daarom een schatting.</p>
-        </>
+        <Masonry
+          items={[
+            { key: 'state', weight: 1.3, node: <StateBar state={energyState(energy, daylight)} daylight={daylight} /> },
+            daylight && { key: 'status', weight: 1.1, node: <Status energy={energy} net={net} /> },
+            daylight && { key: 'solar', weight: 5, node: <Solar energy={energy} sun={sun} now={now} /> },
+            {
+              key: 'gauge',
+              weight: 3.8,
+              node: (
+                <section className="card gauge-card">
+                  <Gauge net={net} peak={energy.monthlyPeak} />
+                  <div className="g-foot">
+                    {stats.avgHour !== null && <span className="chip">gem. laatste uur {power(Math.abs(stats.avgHour)).v} {power(Math.abs(stats.avgHour)).u}{stats.avgHour < 0 ? ' terug' : ''}</span>}
+                  </div>
+                </section>
+              ),
+            },
+            {
+              key: 'stats',
+              weight: 1,
+              node: (
+                <div className="stat-grid">
+                  <section className="stat">
+                    <span className="stat-label">Vandaag</span>
+                    <span className="stat-val">{kwh(energy.kwhFrom)}</span>
+                    <span className="stat-note">afname, geschat</span>
+                  </section>
+                  <section className="stat">
+                    <span className="stat-label">Maandpiek</span>
+                    <span className="stat-val">{energy.monthlyPeak !== null ? `${nl(energy.monthlyPeak / 1000, 2)} kW` : '—'}</span>
+                    <span className="stat-note">hoogste afname</span>
+                  </section>
+                </div>
+              ),
+            },
+            {
+              key: 'chart',
+              weight: 2,
+              node: (
+                <section className="card chart-card">
+                  <div className="card-head"><h2>Laatste 24 uur</h2><span className="when">nettovermogen</span></div>
+                  <Spark history={energy.history} rangeMs={24 * 3600_000} now={now} color="var(--energy)" format={(v) => `${power(v).v} ${power(v).u}`} />
+                </section>
+              ),
+            },
+            { key: 'note', weight: 0.3, node: <p className="footnote">Het dagtotaal telt enkel zolang deze app-server draait en is daarom een schatting.</p> },
+          ]}
+        />
       )}
     </main>
   );
