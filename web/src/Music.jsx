@@ -89,24 +89,18 @@ function StepBtn({ delta, label, bump, big = false, disabled = false }) {
   );
 }
 
-/** Groot groepsvolume: − getal +, vaste standen en dempen. */
+/** Vaste standen voor het groepsvolume en dempen (het grote − getal + is vervallen; het volume per speler staat in de lijst eronder). */
 function GroupVolume({ zone, cmd }) {
   const lvl = useLevel(zone.groupVolume, (level) => cmd(zone.grouped ? 'groupVolume' : 'volume', { ip: zone.leader, level }, { lock: true }));
   const label = zone.grouped ? `Groepsvolume ${short(zone.name)}` : `Volume ${short(zone.name)}`;
   return (
     <div className="vol-big">
-      <span className="vol-big-label"><Icon name={zone.grouped ? 'group' : 'volume'} size={14} />{zone.grouped ? 'Groepsvolume' : 'Volume'}</span>
-      <div className="vstepper big">
-        <StepBtn big delta={-1} label={`${label} zachter`} bump={lvl.bump} disabled={lvl.shown <= 0} />
-        <span className="vnum big" aria-live="polite">{lvl.shown}</span>
-        <StepBtn big delta={1} label={`${label} luider`} bump={lvl.bump} disabled={lvl.shown >= 100} />
-      </div>
       <div className="vchips">
         {PRESETS.map(([name, v]) => (
           <button key={name} type="button" className={`vchip ${lvl.shown === v ? 'on' : ''}`} aria-pressed={lvl.shown === v} onClick={() => lvl.set(v)}>{name}<b>{v}</b></button>
         ))}
-        <button type="button" className={`vchip mute ${zone.mute ? 'on' : ''}`} aria-pressed={zone.mute} onClick={() => cmd('mute', { ip: zone.leader, mute: !zone.mute })}>
-          <Icon name={zone.mute ? 'mute' : 'volume'} size={16} />{zone.mute ? 'Geluid aan' : 'Dempen'}
+        <button type="button" className={`vchip mute ${zone.mute ? 'on' : ''}`} aria-pressed={zone.mute} aria-label={zone.mute ? 'Geluid aan' : 'Dempen'} title={zone.mute ? 'Geluid aan' : 'Dempen'} onClick={() => cmd('mute', { ip: zone.leader, mute: !zone.mute })}>
+          <Icon name={zone.mute ? 'mute' : 'volume'} size={16} /><span className="vtext">{zone.mute ? 'Geluid aan' : 'Dempen'}</span>
         </button>
       </div>
     </div>
@@ -313,14 +307,24 @@ function Zone({ zone, zones, cmd, detail = false }) {
   );
 }
 
+const COVER_LAYOUTS = [['square', 'Vierkant'], ['wide', 'Breed'], ['overlay', 'Titel op hoes'], ['wideoverlay', 'Breed + titel op hoes']];
+
+/** Opmaak van de hoes op de telefoon; de keuze wordt onthouden. Met ?kies=hoes in de link verschijnt de keuzebalk. */
+function useCoverLayout() {
+  const [layout, setLayout] = useState(() => { try { return localStorage.getItem('coverLayout') || 'square'; } catch { return 'square'; } });
+  const set = (v) => { setLayout(v); try { localStorage.setItem('coverLayout', v); } catch { /* geen opslag beschikbaar */ } };
+  return [layout, set, new URLSearchParams(window.location.search).get('kies') === 'hoes'];
+}
+
 export default function Music({ bluos, status, cmd }) {
   const wide = useWide();
+  const [coverLayout, setCoverLayout, picking] = useCoverLayout();
   const { zones, scanning, count } = bluos;
   const groups = zones.filter((z) => z.grouped).length;
   const sub = count === 0 ? (scanning ? 'Zoeken naar spelers…' : 'Geen spelers gevonden') : `${count} ${count === 1 ? 'speler' : 'spelers'}${groups ? ` · ${groups} ${groups === 1 ? 'groep' : 'groepen'}` : ''}`;
 
   return (
-    <main className="music">
+    <main className="music" data-cover={coverLayout}>
       <header>
         <div>
           <h1>Muziek</h1>
@@ -331,6 +335,14 @@ export default function Music({ bluos, status, cmd }) {
           <span className={`pill ${status[0]}`}><i />{status[1]}</span>
         </div>
       </header>
+
+      {picking && (
+        <div className="cover-picker" role="radiogroup" aria-label="Opmaak van de hoes">
+          {COVER_LAYOUTS.map(([id, name]) => (
+            <button key={id} type="button" role="radio" aria-checked={coverLayout === id} className={coverLayout === id ? 'on' : ''} onClick={() => setCoverLayout(id)}>{name}</button>
+          ))}
+        </div>
+      )}
 
       {zones.length === 0 ? (
         <section className="card empty">
