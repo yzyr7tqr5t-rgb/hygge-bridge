@@ -1,0 +1,14 @@
+# Starten:  docker compose up -d --build
+# De instellingen komen uit .env (NIKO_HOST, NIKO_TOKEN, NIKO_SENSOR_UUID, ...).
+services:
+  hygge-bridge:
+    build: .
+    container_name: hygge-bridge
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "3000:3000"
+    volumes:
+      - hygge-data:/data
+volumes:
+  hygge-data:

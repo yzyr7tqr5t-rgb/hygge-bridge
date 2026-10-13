@@ -1,0 +1,8 @@
+node_modules
+web/node_modules
+web/dist
+.env
+state.json
+.git
+.github
+dist-addon

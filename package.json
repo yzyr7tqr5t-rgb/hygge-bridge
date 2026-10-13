@@ -1,0 +1,31 @@
+{
+  "name": "hygge-bridge",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Leest een temperatuursensor uit Niko Home Control II en stuurt de Seitron Hygge (via de Hygge Way gateway) aan.",
+  "type": "module",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=20.6"
+  },
+  "scripts": {
+    "start": "node --env-file=.env src/index.js",
+    "devices": "node --env-file=.env src/list-devices.js",
+    "read": "node --env-file=.env src/read-sensor.js",
+    "test": "node --test",
+    "serve": "node --env-file=.env src/server.js",
+    "build": "vite build web",
+    "dev:web": "vite web",
+    "version": "node scripts/sync-version.mjs && git add hygge_bridge/config.yaml"
+  },
+  "dependencies": {
+    "mqtt": "^5.16.0",
+    "qrcode": "^1.5.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^5.4.11"
+  }
+}

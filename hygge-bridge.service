@@ -1,0 +1,16 @@
+# systemd-unit om de bridge automatisch te starten (bv. op een Raspberry Pi).
+# Kopieer naar /etc/systemd/system/ en pas User en WorkingDirectory aan.
+[Unit]
+Description=Hygge-bridge (Niko Home Control -> Seitron Hygge Way)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/hygge-bridge
+ExecStart=/usr/bin/node --env-file=.env src/index.js
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,26 @@
+name: Hygge bridge
+version: "1.1.0"
+slug: hygge_bridge
+description: Niko Home Control dashboard voor licht, klimaat en energie
+url: https://github.com/yzyr7tqr5t-rgb/hygge-bridge
+image: ghcr.io/yzyr7tqr5t-rgb/hygge-bridge
+arch: [aarch64, amd64, armv7]
+startup: application
+boot: auto
+init: false
+ports:
+  3000/tcp: 3010
+ports_description:
+  3000/tcp: Web-app (open http://<ip-van-de-pi>:3010)
+options:
+  niko_host: ""
+  niko_token: ""
+  niko_sensor_uuid: ""
+  latitude: 50.85
+  longitude: 4.35
+schema:
+  niko_host: str
+  niko_token: password
+  niko_sensor_uuid: str
+  latitude: float
+  longitude: float

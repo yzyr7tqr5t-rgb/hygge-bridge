@@ -1,0 +1,9 @@
+{
+  "name": "Hygge temperatuur",
+  "short_name": "Hygge",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f1115",
+  "theme_color": "#0f1115",
+  "icons": [{ "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }]
+}
