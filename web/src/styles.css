@@ -656,30 +656,15 @@ main { padding-bottom: calc(env(safe-area-inset-bottom) + 100px); }
 .zone:not(.detail) .zone-title { font-size: 25px; line-height: 1.15; }
 .zone:not(.detail) .zone-sub { font-size: 15.5px; }
 
-/* Keuzebalk voor de hoes (alleen met ?kies=hoes) */
-.cover-picker { position: sticky; top: 8px; z-index: 20; display: flex; flex-wrap: wrap; gap: 6px; padding: 8px; margin: 0 0 12px; border-radius: 18px; background: color-mix(in srgb, var(--card) 88%, transparent); border: 1px solid var(--line); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
-.cover-picker button { flex: 1 1 auto; padding: 9px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--text); font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; touch-action: manipulation; }
-.cover-picker button.on { background: var(--text); color: var(--bg); border-color: var(--text); }
-
-/* Telefoon-varianten van de hoes (tablet blijft ongemoeid) */
-.music[data-cover="wide"] .zone:not(.detail) .art.l,
-.music[data-cover="wideoverlay"] .zone:not(.detail) .art.l { aspect-ratio: 16 / 10; }
-.music[data-cover="overlay"] .zone:not(.detail) .zone-top,
-.music[data-cover="wideoverlay"] .zone:not(.detail) .zone-top { position: relative; gap: 0; }
-.music[data-cover="overlay"] .zone:not(.detail) .zone-text,
-.music[data-cover="wideoverlay"] .zone:not(.detail) .zone-text { position: absolute; left: 0; right: 0; bottom: 0; padding: 56px 18px 16px; border-radius: 0 0 28px 28px; background: linear-gradient(to top, rgba(0, 0, 0, 0.78), rgba(0, 0, 0, 0)); color: #fff; pointer-events: none; }
-.music[data-cover="overlay"] .zone:not(.detail) .zone-sub,
-.music[data-cover="wideoverlay"] .zone:not(.detail) .zone-sub { color: rgba(255, 255, 255, 0.82); }
-.music[data-cover="overlay"] .zone:not(.detail) .zone-name,
-.music[data-cover="wideoverlay"] .zone:not(.detail) .zone-name { color: rgba(255, 255, 255, 0.9); }
-.music[data-cover="overlay"] .zone:not(.detail) .zone-meta .chip,
-.music[data-cover="wideoverlay"] .zone:not(.detail) .zone-meta .chip { background: rgba(255, 255, 255, 0.2); color: #fff; }
-.music[data-cover="overlay"] .zone:not(.detail) .art-logo,
-.music[data-cover="wideoverlay"] .zone:not(.detail) .art-logo { top: 14px; bottom: auto; }
-.music[data-cover="overlay"] .zone:not(.detail) .zone-title,
-.music[data-cover="wideoverlay"] .zone:not(.detail) .zone-title { font-size: 23px; -webkit-line-clamp: 2; }
-.music[data-cover="overlay"] .zone:not(.detail) .zone-meta,
-.music[data-cover="wideoverlay"] .zone:not(.detail) .zone-meta { margin-top: 6px; }
+/* Telefoon: de titel staat over de onderkant van de hoes (tablet blijft ongemoeid) */
+.zone:not(.detail) .zone-top { position: relative; gap: 0; }
+.zone:not(.detail) .zone-text { position: absolute; left: 0; right: 0; bottom: 0; padding: 56px 18px 16px; border-radius: 0 0 28px 28px; background: linear-gradient(to top, rgba(0, 0, 0, 0.78), rgba(0, 0, 0, 0)); color: #fff; pointer-events: none; }
+.zone:not(.detail) .zone-sub { color: rgba(255, 255, 255, 0.82); }
+.zone:not(.detail) .zone-name { color: rgba(255, 255, 255, 0.9); }
+.zone:not(.detail) .zone-meta .chip { background: rgba(255, 255, 255, 0.2); color: #fff; }
+.zone:not(.detail) .art-logo { top: 14px; bottom: auto; }
+.zone:not(.detail) .zone-title { font-size: 23px; -webkit-line-clamp: 2; }
+.zone:not(.detail) .zone-meta { margin-top: 6px; }
 
 /* Telefoon: het groepsvolume is compacter (kleinere knoppen en getal, alle standen op één rij, dempen als pictogram) */
 .zone:not(.detail) .vol-big { gap: 8px; padding: 0; }
@@ -696,12 +681,12 @@ main { padding-bottom: calc(env(safe-area-inset-bottom) + 100px); }
 /* Telefoon: afspeelpictogram en bron staan rechts, op dezelfde regel als de naam van de groep */
 .zone:not(.detail) .zone-text { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 12px; row-gap: 3px; }
 .zone:not(.detail) .zone-name { grid-column: 1; grid-row: 1; }
-.music[data-cover] .zone:not(.detail) .zone-meta, .zone:not(.detail) .zone-meta { grid-column: 2; grid-row: 1; margin: 0; min-height: 0; justify-content: flex-end; }
+.zone:not(.detail) .zone-meta { grid-column: 2; grid-row: 1; margin: 0; min-height: 0; justify-content: flex-end; }
 .zone:not(.detail) .zone-title { grid-column: 1 / -1; grid-row: 2; }
 .zone:not(.detail) .zone-sub { grid-column: 1 / -1; grid-row: 3; }
 
 /* Telefoon: afspeelpictogram en bron staan rechtsonder in het tekstblok, op de regel van de artiest */
-.music[data-cover] .zone:not(.detail) .zone-meta, .zone:not(.detail) .zone-meta { grid-column: 2; grid-row: 3; align-self: end; justify-content: flex-end; }
+.zone:not(.detail) .zone-meta { grid-column: 2; grid-row: 3; align-self: end; justify-content: flex-end; }
 .zone:not(.detail) .zone-sub { grid-column: 1; grid-row: 3; }
 
 /* Zonder het grote groepsvolume: de vaste standen staan direct onder de bediening */

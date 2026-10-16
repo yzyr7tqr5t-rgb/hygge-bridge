@@ -307,24 +307,14 @@ function Zone({ zone, zones, cmd, detail = false }) {
   );
 }
 
-const COVER_LAYOUTS = [['square', 'Vierkant'], ['wide', 'Breed'], ['overlay', 'Titel op hoes'], ['wideoverlay', 'Breed + titel op hoes']];
-
-/** Opmaak van de hoes op de telefoon; de keuze wordt onthouden. Met ?kies=hoes in de link verschijnt de keuzebalk. */
-function useCoverLayout() {
-  const [layout, setLayout] = useState(() => { try { return localStorage.getItem('coverLayout') || 'square'; } catch { return 'square'; } });
-  const set = (v) => { setLayout(v); try { localStorage.setItem('coverLayout', v); } catch { /* geen opslag beschikbaar */ } };
-  return [layout, set, new URLSearchParams(window.location.search).get('kies') === 'hoes'];
-}
-
 export default function Music({ bluos, status, cmd }) {
   const wide = useWide();
-  const [coverLayout, setCoverLayout, picking] = useCoverLayout();
   const { zones, scanning, count } = bluos;
   const groups = zones.filter((z) => z.grouped).length;
   const sub = count === 0 ? (scanning ? 'Zoeken naar spelers…' : 'Geen spelers gevonden') : `${count} ${count === 1 ? 'speler' : 'spelers'}${groups ? ` · ${groups} ${groups === 1 ? 'groep' : 'groepen'}` : ''}`;
 
   return (
-    <main className="music" data-cover={coverLayout}>
+    <main className="music">
       <header>
         <div>
           <h1>Muziek</h1>
@@ -335,14 +325,6 @@ export default function Music({ bluos, status, cmd }) {
           <span className={`pill ${status[0]}`}><i />{status[1]}</span>
         </div>
       </header>
-
-      {picking && (
-        <div className="cover-picker" role="radiogroup" aria-label="Opmaak van de hoes">
-          {COVER_LAYOUTS.map(([id, name]) => (
-            <button key={id} type="button" role="radio" aria-checked={coverLayout === id} className={coverLayout === id ? 'on' : ''} onClick={() => setCoverLayout(id)}>{name}</button>
-          ))}
-        </div>
-      )}
 
       {zones.length === 0 ? (
         <section className="card empty">

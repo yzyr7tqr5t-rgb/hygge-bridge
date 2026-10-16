@@ -247,6 +247,8 @@ server.listen(PORT, '0.0.0.0', () => console.log(`Hygge-app v${VERSION} op http:
 
 for (const sig of ['SIGINT', 'SIGTERM']) {
   process.on(sig, async () => {
+    // Is de controller onbereikbaar, dan blijft het sluiten van de verbinding hangen: na 3 s toch afsluiten.
+    setTimeout(() => process.exit(0), 3000).unref();
     bluos.stop();
     await saveState();
     await Promise.all(clients.map((c) => c.close()));
