@@ -96,14 +96,11 @@ function Tile({ device, control, pill = false, room = '' }) {
   );
 }
 
-/** Een ruimte met maar één licht: geen kaart, maar één brede balk met de kamernaam en de lichtnaam. Overige toestellen (ventilator, stopcontact) eronder. */
+/** Een ruimte met maar één toestel, en dat is een licht: geen kaart, maar één brede balk met de kamernaam en de lichtnaam. */
 function SingleRoom({ name, devices, control }) {
-  const light = devices.find(isLight);
-  const extras = devices.filter((d) => d !== light);
   return (
     <section className="single-room">
-      <Tile pill room={name} device={light} control={control} />
-      {extras.length > 0 && <div className="tiles single-extras">{extras.map((d) => <Tile key={d.uuid} device={d} control={control} />)}</div>}
+      <Tile pill room={name} device={devices[0]} control={control} />
     </section>
   );
 }
@@ -143,12 +140,12 @@ function Room({ name, devices, control, collapsed, onToggle }) {
           </span>
           <span className="room-chevron"><Icon name="chevron" size={18} /></span>
         </button>
-        {lamps.length > 1 && (
+        {(lamps.length > 1 || (lamps.length === 1 && devices.length > 1)) && (
           <button
             className={`switch ${anyOn ? 'on' : ''}`}
             role="switch"
             aria-checked={anyOn}
-            aria-label={`Alle lichten ${name}`}
+            aria-label={lamps.length === 1 ? `Licht ${name}` : `Alle lichten ${name}`}
             onClick={() => control(lamps.filter((l) => l.on === anyOn).map((l) => ({ uuid: l.uuid, on: !anyOn })))}
           ><i /></button>
         )}
@@ -210,9 +207,8 @@ export default function Lights({ lights, loaded, reachable, control, status }) {
       {loaded && reachable && lights.length === 0 && <p className="hint">Wachten op de toestellen van Niko…</p>}
       <Masonry
         items={rooms.map(([name, devices]) => {
-          if (devices.filter(isLight).length === 1) {
-            const extras = devices.length - 1;
-            return { key: name, weight: 1.6 + (extras ? Math.ceil(extras / 2) * 1.1 : 0), node: <SingleRoom name={name} devices={devices} control={control} /> };
+          if (devices.length === 1 && isLight(devices[0])) {
+            return { key: name, weight: 1.6, node: <SingleRoom name={name} devices={devices} control={control} /> };
           }
           return {
             key: name,
