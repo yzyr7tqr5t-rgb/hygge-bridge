@@ -19,7 +19,7 @@ const iconFor = (d) => (d.kind === 'fan' ? 'fan' : BY_NAME.find(([re]) => re.tes
 const KIND_ORDER = { dimmer: 0, light: 1, socket: 2, fan: 3 };
 
 /** Tegel: tik = aan/uit, bij dimmers ook horizontaal slepen = helderheid. */
-function Tile({ device, control }) {
+function Tile({ device, control, pill = false, room = '' }) {
   const drag = useRef(null);
   const [live, setLive] = useState(null); // helderheid tijdens het slepen
   const dimmable = device.kind === 'dimmer';
@@ -67,22 +67,44 @@ function Tile({ device, control }) {
   const state = !device.online ? 'Offline' : !device.on ? 'Uit' : dimmable ? `${level}%` : 'Aan';
   return (
     <button
-      className={`tile ${device.on ? 'on' : ''} ${device.kind} ${device.online ? '' : 'offline'}`}
+      className={`tile ${pill ? 'pill' : ''} ${device.on ? 'on' : ''} ${device.kind} ${device.online ? '' : 'offline'}`}
       onPointerDown={(e) => { dragged.current = false; onPointerDown(e); }}
       onPointerMove={(e) => { onPointerMove(e); if (drag.current?.moved) dragged.current = true; }}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
       onClick={() => { if (dragged.current) { dragged.current = false; return; } onClick(); }}
       aria-pressed={device.on}
-      aria-label={`${device.name}, ${state}`}
+      aria-label={`${pill ? `${room}, ` : ''}${device.name}, ${state}`}
     >
       {dimmable && <span className="fill" style={{ width: `${level}%` }} />}
       <span className="tile-icon"><Icon name={iconFor(device)} size={32} /></span>
-      <span className="tile-text">
-        <span className="tile-name">{device.name}</span>
-        <span className="tile-state">{state}</span>
-      </span>
+      {pill ? (
+        <>
+          <span className="tile-text">
+            <span className="pill-room">{room}</span>
+            <span className="tile-name">{device.name}</span>
+          </span>
+          {dimmable ? <span className="pill-state">{state}</span> : <span className="pill-switch" aria-hidden="true"><i /></span>}
+        </>
+      ) : (
+        <span className="tile-text">
+          <span className="tile-name">{device.name}</span>
+          <span className="tile-state">{state}</span>
+        </span>
+      )}
     </button>
+  );
+}
+
+/** Een ruimte met maar één licht: geen kaart, maar één brede balk met de kamernaam en de lichtnaam. Overige toestellen (ventilator, stopcontact) eronder. */
+function SingleRoom({ name, devices, control }) {
+  const light = devices.find(isLight);
+  const extras = devices.filter((d) => d !== light);
+  return (
+    <section className="single-room">
+      <Tile pill room={name} device={light} control={control} />
+      {extras.length > 0 && <div className="tiles single-extras">{extras.map((d) => <Tile key={d.uuid} device={d} control={control} />)}</div>}
+    </section>
   );
 }
 
@@ -187,11 +209,17 @@ export default function Lights({ lights, loaded, reachable, control, status }) {
       {!loaded && <p className="hint">Laden…</p>}
       {loaded && reachable && lights.length === 0 && <p className="hint">Wachten op de toestellen van Niko…</p>}
       <Masonry
-        items={rooms.map(([name, devices]) => ({
-          key: name,
-          weight: 1 + (collapsed.has(name) ? 0 : Math.ceil(devices.length / 2) * 1.1),
-          node: <Room name={name} devices={devices} control={control} collapsed={collapsed.has(name)} onToggle={() => toggleRoom(name)} />,
-        }))}
+        items={rooms.map(([name, devices]) => {
+          if (devices.filter(isLight).length === 1) {
+            const extras = devices.length - 1;
+            return { key: name, weight: 1.6 + (extras ? Math.ceil(extras / 2) * 1.1 : 0), node: <SingleRoom name={name} devices={devices} control={control} /> };
+          }
+          return {
+            key: name,
+            weight: 1 + (collapsed.has(name) ? 0 : Math.ceil(devices.length / 2) * 1.1),
+            node: <Room name={name} devices={devices} control={control} collapsed={collapsed.has(name)} onToggle={() => toggleRoom(name)} />,
+          };
+        })}
       />
     </main>
   );
