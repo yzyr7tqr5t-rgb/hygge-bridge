@@ -8,5 +8,7 @@ if [ -f /data/options.json ]; then
   export NIKO_SENSOR_UUID="$(opt niko_sensor_uuid)"
   export LATITUDE="$(opt latitude)"
   export LONGITUDE="$(opt longitude)"
+  export BRAVIA_HOST="$(opt bravia_host)"
+  export BRAVIA_PSK="$(opt bravia_psk)"
 fi
 exec node /app/src/server.js

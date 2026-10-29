@@ -2,6 +2,7 @@
 // (web/dist) plus een kleine API. Het Niko-token blijft op de server.
 //   GET /api/state   -> huidige toestand + geschiedenis
 //   GET /api/stream  -> Server-Sent Events met live updates
+//   POST /api/tv     -> { action: 'on' | 'off' } zet de Sony Bravia-tv aan of uit
 //   POST /api/bluos  -> { action, ip, ... } bedient BluOS-spelers; GET /api/bluos/img geeft hoezen door
 //   GET /api/qr      -> SVG met een QR-code van het adres van de app
 //   POST /api/devices -> [{ uuid, on?, brightness? }] bedient lichten, dimmers, stopcontacten
@@ -22,6 +23,7 @@ import { EnergyTracker } from './energy.js';
 import { sunTimes } from './sun.js';
 import { BluosManager } from './bluos-manager.js';
 import { lanPrefixes } from './bluos.js';
+import { BraviaTv } from './bravia.js';
 
 const PORT = Number(process.env.PORT) || 3000;
 const { version: VERSION } = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
@@ -76,7 +78,7 @@ function record(uuid, name, temperature) {
 }
 
 function snapshot() {
-  return { version: VERSION, bluos: bluos.snapshot(), connected, sun: sunTimes(Date.now(), config.location.lat, config.location.lon), energy: { ...energy.snapshot(), history: energy.history }, lights: [...lights.values()], target, targetMin: TARGET_MIN, targetMax: TARGET_MAX, sensors: [...sensors.values()], now: Date.now() };
+  return { version: VERSION, tv: tv.snapshot(), bluos: bluos.snapshot(), connected, sun: sunTimes(Date.now(), config.location.lat, config.location.lon), energy: { ...energy.snapshot(), history: energy.history }, lights: [...lights.values()], target, targetMin: TARGET_MIN, targetMax: TARGET_MAX, sensors: [...sensors.values()], now: Date.now() };
 }
 
 function broadcast(event, data) {
@@ -94,6 +96,10 @@ const bluos = new BluosManager({
 });
 bluos.on('update', (snap) => broadcast('bluos', snap));
 bluos.on('hosts', () => saveState());
+
+// Sony Bravia-tv aan/uit (optioneel: zonder BRAVIA_HOST en BRAVIA_PSK blijft de tv-knop verborgen).
+const tv = new BraviaTv({ host: process.env.BRAVIA_HOST, psk: process.env.BRAVIA_PSK });
+tv.on('update', (snap) => broadcast('tv', snap));
 
 // Eén verbinding met de controller voor alles: temperaturen, lichten en energie.
 // (De controller weigert soms extra verbindingen, dus we houden het bij één.)
@@ -147,6 +153,7 @@ home.on('update', (list) => {
 });
 const clients = [home.connect()];
 bluos.start().catch((err) => console.error('FOUT: BluOS starten mislukt:', err.message));
+tv.start();
 
 async function serveStatic(req, res) {
   const path = normalize(decodeURIComponent(new URL(req.url, 'http://x').pathname)).replace(/^(\.\.[/\\])+/, '');
@@ -188,6 +195,7 @@ const server = http.createServer((req, res) => {
     res.write(`event: status\ndata: ${JSON.stringify({ connected })}\n\n`);
     res.write(`event: target\ndata: ${JSON.stringify({ target })}\n\n`);
     res.write(`event: bluos\ndata: ${JSON.stringify(bluos.snapshot())}\n\n`);
+    res.write(`event: tv\ndata: ${JSON.stringify(tv.snapshot())}\n\n`);
     res.write(`event: energy\ndata: ${JSON.stringify(energy.snapshot())}\n\n`);
     res.write(`event: lights\ndata: ${JSON.stringify([...lights.values()])}\n\n`);
     streams.add(res);
@@ -198,6 +206,16 @@ const server = http.createServer((req, res) => {
       try {
         await bluos.command(body?.action, body ?? {});
         json(res, 200, { ok: true });
+      } catch (err) {
+        json(res, 400, { ok: false, error: err.message });
+      }
+    });
+  } else if (pathname === '/api/tv' && req.method === 'POST') {
+    // Body: { action: 'on' | 'off' }
+    readJson(req, async (body) => {
+      try {
+        await tv.command(body?.action);
+        json(res, 200, { ok: true, power: tv.power });
       } catch (err) {
         json(res, 400, { ok: false, error: err.message });
       }
@@ -250,6 +268,7 @@ for (const sig of ['SIGINT', 'SIGTERM']) {
     // Is de controller onbereikbaar, dan blijft het sluiten van de verbinding hangen: na 3 s toch afsluiten.
     setTimeout(() => process.exit(0), 3000).unref();
     bluos.stop();
+    tv.stop();
     await saveState();
     await Promise.all(clients.map((c) => c.close()));
     process.exit(0);

@@ -76,7 +76,7 @@ function useBluosIcon(url) {
 }
 
 export default function App() {
-  const { sensors, lights, energy, sun, version, bluos, bluosCmd, connected, reachable, loaded, target, targetMin, targetMax, setTarget, control } = useSensors();
+  const { sensors, lights, energy, sun, version, bluos, bluosCmd, tv, tvCmd, connected, reachable, loaded, target, targetMin, targetMax, setTarget, control } = useSensors();
   const [tab, setTab] = useState(() => {
     try { const t = localStorage.getItem('tab'); return ['lights', 'music', 'energy', 'share'].includes(t) ? t : 'climate'; } catch { return 'climate'; }
   });
@@ -106,7 +106,7 @@ export default function App() {
   return (
     <>
       {tab === 'lights' ? (
-        <Lights lights={lights} loaded={loaded} reachable={reachable} control={control} status={status} />
+        <Lights lights={lights} loaded={loaded} reachable={reachable} control={control} status={status} tv={tv} tvCmd={tvCmd} />
       ) : tab === 'music' ? (
         <Music bluos={bluos} status={status} cmd={bluosCmd} />
       ) : tab === 'share' ? (

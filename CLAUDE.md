@@ -42,6 +42,14 @@ Plan en API-notities: `docs/bluos-plan.md`. Code: `src/bluos.js` (puur), `src/bl
 - Hoes bij radio: `src/cover.js` zoekt bij "ARTIEST - Titel" een hoes via iTunes, daarna Deezer (gratis, zonder sleutel), met strenge controle op artiest en titel en met onthouden resultaten. Daarbij gaan **titel en artiest naar Apple/Deezer**; uitzetten met `BLUOS_COVERS=false`. Het zenderlogo blijft de terugval.
 - Test tegen echte spelers uitsluitend met **no-op** commando's (zelfde volume), nooit play/pauze/groeperen: dat verstoort muziek in huis.
 
+## Sony-tv (tegel "Televisie" in de tab Licht)
+Code: `src/bravia.js`, tests `test/bravia.test.js`. Optioneel: zonder `BRAVIA_HOST` (nu 192.168.0.149, Bravia KD-55AG9) en `BRAVIA_PSK` is de tegel verborgen.
+Op de Pi staan ze in de add-on-configuratie (`bravia_host`, `bravia_psk`); de sleutel typt de gebruiker zelf in.
+- **Aan** = `setPowerStatus true`; **uit** = IRCC-toets `PowerOff`. `setPowerStatus false` zet deze tv niet uit.
+- Aan zetten via het netwerk vraagt "Externe start" aan op de tv. De tv wordt elke 10 s uitgelezen.
+- Zenders wisselen op de Telenet-box (192.168.0.134) kan niet via de tv: die houdt cijfer- en kanaaltoetsen zelf.
+- Test tegen de echte tv uitsluitend met leescommando's (`getPowerStatus`); aan/uit alleen als de gebruiker erom vraagt.
+
 ## Regels en valkuilen
 - **Geheimen:** `.env` (met `NIKO_TOKEN`) en `state.json` staan in `.gitignore` en horen nooit in een commit, log of chatbericht.
   Controleer vóór een commit dat het token nergens in staat. De repo is openbaar.

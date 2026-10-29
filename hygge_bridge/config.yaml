@@ -18,9 +18,13 @@ options:
   niko_sensor_uuid: ""
   latitude: 50.85
   longitude: 4.35
+  bravia_host: ""
+  bravia_psk: ""
 schema:
   niko_host: str
   niko_token: password
   niko_sensor_uuid: str
   latitude: float
   longitude: float
+  bravia_host: str?
+  bravia_psk: password?

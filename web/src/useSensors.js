@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 /** Laadt de toestand en houdt hem live bij via Server-Sent Events. */
 export function useSensors() {
-  const [data, setData] = useState({ connected: false, sensors: [], lights: [], energy: null, sun: null, version: null, bluos: { zones: [], scanning: false, count: 0 }, target: null, targetMin: 10, targetMax: 28, loaded: false, reachable: true });
+  const [data, setData] = useState({ connected: false, sensors: [], lights: [], energy: null, sun: null, version: null, tv: { configured: false, power: null }, bluos: { zones: [], scanning: false, count: 0 }, target: null, targetMin: 10, targetMax: 28, loaded: false, reachable: true });
   const pending = useRef(null); // wachtend POST-timeout: server-updates negeren zolang de gebruiker draait
 
   const locked = useRef(new Set()); // lampen die de gebruiker nu versleept: server-echo's negeren
@@ -25,6 +25,23 @@ export function useSensors() {
     return fetch('/api/devices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(commands) })
       .catch(() => {})
       .finally(() => { if (lock) setTimeout(() => commands.forEach((c) => locked.current.delete(c.uuid)), 600); });
+  }, []);
+
+  // Tv aan/uit: de knop volgt meteen, de server bevestigt daarna wat de tv echt doet.
+  const tvLock = useRef(0);
+  const tvCmd = useCallback((action) => {
+    tvLock.current = Date.now() + 4000;
+    setData((d) => ({ ...d, tv: { ...d.tv, power: action === 'on' ? 'active' : 'standby' } }));
+    return fetch('/api/tv', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }) })
+      .then((r) => r.json())
+      .catch(() => ({ ok: false, error: 'geen verbinding met de server' }))
+      .then((res) => {
+        if (!res.ok) {
+          tvLock.current = 0;
+          fetch('/api/state', { cache: 'no-store' }).then((r) => r.json()).then((s) => setData((d) => ({ ...d, tv: s.tv }))).catch(() => {});
+        }
+        return res;
+      });
   }, []);
 
   // BluOS: commando's met direct effect op het scherm; terwijl je een regelaar sleept negeren we server-updates.
@@ -87,6 +104,10 @@ export function useSensors() {
           return { ...d, reachable: true, energy: { ...snap, history: next } };
         });
       });
+      es.addEventListener('tv', (e) => {
+        if (tvLock.current > Date.now()) return;
+        setData((d) => ({ ...d, reachable: true, tv: JSON.parse(e.data) }));
+      });
       es.addEventListener('bluos', (e) => {
         if (bluosLock.current > Date.now()) return;
         setData((d) => ({ ...d, reachable: true, bluos: JSON.parse(e.data) }));
@@ -121,7 +142,7 @@ export function useSensors() {
     };
   }, []);
 
-  return { ...data, setTarget, control, bluosCmd };
+  return { ...data, setTarget, control, bluosCmd, tvCmd };
 }
 
 /** Past een BluOS-commando meteen toe op de weergave (de speler bevestigt het daarna). */

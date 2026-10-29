@@ -105,6 +105,30 @@ function SingleRoom({ name, devices, control }) {
   );
 }
 
+/** Sony-tv: tik = aan/uit. Staat de tv onbereikbaar (netwerk of stekker), dan is de knop gedimd. */
+function TvTile({ tv, tvCmd }) {
+  const on = tv.power === 'active';
+  const reachable = tv.power !== null;
+  const state = !reachable ? 'Niet bereikbaar' : on ? 'Aan' : 'Uit';
+  return (
+    <section className="single-room">
+      <button
+        className={`tile pill ${on ? 'on' : ''} ${reachable ? '' : 'offline'}`}
+        onClick={() => tvCmd(on ? 'off' : 'on')}
+        aria-pressed={on}
+        aria-label={`Televisie, ${state}`}
+      >
+        <span className="tile-icon"><Icon name="tv" size={32} /></span>
+        <span className="tile-text">
+          <span className="pill-room">{state}</span>
+          <span className="tile-name">Televisie</span>
+        </span>
+        <span className="pill-switch" aria-hidden="true"><i /></span>
+      </button>
+    </section>
+  );
+}
+
 const ROOM_ICON = { living: 'sofa', keuken: 'kitchen', buro: 'desk', wc: 'toilet', berging: 'box', sas: 'door', thuis: 'home' };
 
 function Room({ name, devices, control, collapsed, onToggle }) {
@@ -160,7 +184,7 @@ function Room({ name, devices, control, collapsed, onToggle }) {
   );
 }
 
-export default function Lights({ lights, loaded, reachable, control, status }) {
+export default function Lights({ lights, loaded, reachable, control, status, tv, tvCmd }) {
   const [collapsed, setCollapsed] = useState(() => {
     try { return new Set(JSON.parse(localStorage.getItem('collapsedRooms') ?? '[]')); } catch { return new Set(); }
   });
@@ -205,6 +229,7 @@ export default function Lights({ lights, loaded, reachable, control, status }) {
 
       {!loaded && <p className="hint">Laden…</p>}
       {loaded && reachable && lights.length === 0 && <p className="hint">Wachten op de toestellen van Niko…</p>}
+      {tv?.configured && <TvTile tv={tv} tvCmd={tvCmd} />}
       <Masonry
         items={rooms.map(([name, devices]) => {
           if (devices.length === 1 && isLight(devices[0])) {
